@@ -4,7 +4,8 @@ import sqlite3, os
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)
+
+CORS(app, resources={r"/*": {"origins": "*"}})
  
 # ---------------- DB SETTINGS ----------------
 DB_FILE = "main.db"
