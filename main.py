@@ -533,6 +533,9 @@ def get_reviews():
 
     return jsonify(reviews), 200
 
+@app.route("/")
+def home():
+    return jsonify({"message": "Backend is running ✅"})
 
 
 
