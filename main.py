@@ -295,7 +295,7 @@ def register_provider():
 
     return jsonify({
         "message": "✅ Provider registered successfully!",
-        "photo_url": f"http://127.0.0.1:5000/uploads/{filename}" if filename else None
+        "photo_url": f"https://job-service-backend.onrender.com/uploads/{filename}" if filename else None
     }), 200
 
 @app.route("/update_provider", methods=["PUT"])
@@ -358,7 +358,8 @@ def get_provider(user_id):
         provider_dict = dict(provider)
 
         if provider_dict.get("photo"):
-            provider_dict["photo"] = f"http://127.0.0.1:5000/uploads/{provider_dict['photo']}"
+            provider_dict["photo"] = f"https://job-service-backend.onrender.com/uploads/{provider_dict['photo']}"
+            
 
         return jsonify({"provider": provider_dict})
 
@@ -386,35 +387,41 @@ def search_providers():
     for row in rows:
         provider = dict(row)
         if provider.get("photo"):
-            provider["photo"] = f"http://127.0.0.1:5000/uploads/{provider['photo']}"
+            provider["photo"] = f"https://job-service-backend.onrender.com/uploads/{provider['photo']}"
         providers.append(provider)
 
     return jsonify(providers)
-@app.route("/delete_account/<int:user_id>", methods=["DELETE"])
-def delete_account(user_id):
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
+@app.route("/delete_provider/<int:id>", methods=["DELETE"])
+def delete_provider(id):
+    conn = get_connection()
+    cursor = conn.cursor()
 
-        # ✅ Delete provider record first
-        cur.execute("DELETE FROM providers WHERE user_id=?", (user_id,))
+    # ✅ Get provider info to find user_id
+    cursor.execute("SELECT user_id FROM providers WHERE id = ?", (id,))
+    provider = cursor.fetchone()
 
-        # ✅ Remove provider profile photo if exists
-        photo_path = os.path.join(app.config["UPLOAD_FOLDER"], f"user_{user_id}.jpg")
-        if os.path.exists(photo_path):
-            os.remove(photo_path)
-
-        # ✅ Delete user
-        cur.execute("DELETE FROM auth WHERE id=?", (user_id,))
-
-        conn.commit()
+    if not provider:
         conn.close()
+        return jsonify({"message": "❌ Provider not found"}), 404
 
-        return jsonify({"message": "✅ Account deleted successfully"}), 200
+    user_id = provider["user_id"]
 
-    except Exception as e:
-        print(e)
-        return jsonify({"message": "❌ Error deleting account"}), 500
+    # ✅ Delete provider entry
+    cursor.execute("DELETE FROM providers WHERE id = ?", (id,))
+
+    # ✅ Delete associated user account from auth
+    cursor.execute("DELETE FROM auth WHERE id = ?", (user_id,))
+
+    # ✅ Delete provider’s photo if exists
+    photo_path = os.path.join(app.config["UPLOAD_FOLDER"], f"user_{user_id}.jpg")
+    if os.path.exists(photo_path):
+        os.remove(photo_path)
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "✅ Provider and account deleted successfully"}), 200
+
 # 
 @app.route("/api/reviews", methods=["POST"])
 def add_review():
